@@ -1,0 +1,305 @@
+### **Registration functionality Testsuite (TS-3)**
+
+*** Settings ***
+
+Documentation	Testing the registration functionality using manual input only. Covers sign-up scenarios with valid and invalid data. Third-party authentication options (e.g., Google, GitHub) are excluded from this test scope.	
+
+Pre Condition	Internet connection is active
+				Browser is open in incognito/private mode 
+				Navigate to https://gitlab.com/users/sign_up
+				Confirm that the page title in the browser tab is "Sign up · GitLab"
+				Ensure user is logged out (no active session)		
+Post Condition	Ensure user is logged out
+				Close incognito browser window
+
+Tags	SignUp, Register, TS-3-SignUp			
+
+*** Variables ***
+
+SignUpUrl = https://gitlab.com/users/sign_up
+FirstName = Daiga
+LastName = Tähkäpää
+UserName_A = [REDACTED_UserName_A]
+UserName_B = [REDACTED_UserName_B]
+UserName_C = [REDACTED_UserName_C]
+Email_A = [REDACTED_Email_A]
+Email_B = [REDACTED_Email_B]
+Password = [REDACTED_Password]
+Invalid_LongFirstName = Daaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Invalid_LongLastName = Taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Invalid_ShortUserName = d
+Invalid_UserName = daiga!@#
+Invalid_LongUserName = DaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaaaaaaDaaaaa
+Taken_UserName = [REDACTED_Taken_UserName]
+Invalid_Email = daiga.tahkapaa
+Invalid_noTLDEmail = daiga.tahkapaa@domain
+Invalid_PasswordCommon = password123
+Invalid_PasswordShort = 46sdv7:
+Invalid_PasswordLong = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Invalid_PasswordWithUsername_C = [REDACTED]_Testing46sdv7:
+Empty= 
+
+*** Test Cases ***
+
+# Neutral / Functional UI Tests
+
+TS-3-001_Show password toggle functionality
+	Navigate To SignUp Page  SignUpUrl
+	Input Password  Password
+    Verify Password field displays masked characters (•••) instead of plain text
+	Click The "Show password" (eye-icon) button
+	Verify The password becomes visible in plain text
+	Click The "Hide password" (eye-slash-icon) button
+	Verify The password is hidden by showing • characters instead of plain text
+
+# Positive Tests
+
+TS-3-002_Register user with valid data
+	Navigate To SignUp Page  SignUpUrl
+	Input First name  FirstName  
+	Input Last name  LastName  
+	Input Username  UserName_A  
+	Input Email  Email_A  
+	Input Password  Password
+	Click "Continue" to submit the registration form 
+	Verify Page title in the browser tab is "Help us keep GitLab secure · GitLab"
+	Verify Heading on the page is "Help us keep GitLab secure" and a message: "You are signed in as UserName. For added security, you'll need to verify your identity in a few quick steps." is displayed
+
+# Negative Tests 
+
+TS-3-003_Username already taken
+	Prerequisite: TS-3-002_Register user with valid data must be completed to ensure UserName is already registered  
+	Navigate To SignUp Page  SignUpUrl
+	Input First name  FirstName  
+	Input Last name  LastName  
+	Input Username  UserName_A
+	Verify that when the UserName is entered the live validation message first shows "Checking for username availability..." and shortly after changes to "Username is already taken."   
+	Input Email  Email_B  
+	Input Password  Password
+	Click "Continue" to submit the registration form 
+	Verify An error alert appears at the top of the form, showing a red error icon (!) and the text: "1 error prohibited this user from being saved: Username has already been taken"
+
+TS-3-004_Email already taken
+	Prerequisite: TS-3-002_Register user with valid data must be completed to ensure Email_A is already registered  
+	Navigate To SignUp Page  SignUpUrl
+	Input First name  FirstName  
+	Input Last name  LastName  
+	Input Username  UserName_B
+	Input Email  Email_A  
+	Input Password  Password
+	Click "Continue" to submit the registration form 
+	Verify An error alert appears at the top of the form, showing a red error icon (!) and the text: "1 error prohibited this user from being saved: Email has already been taken"
+
+TS-3-005_Username and Email already taken
+	Prerequisite: TS-3-002_Register user with valid data must be completed to ensure Email_A is already registered  
+	Navigate To SignUp Page  SignUpUrl
+	Input First name  FirstName  
+	Input Last name  LastName  
+	Input Username  UserName_A 
+	Verify that when the UserName is entered the live validation message first shows "Checking for username availability..." and shortly after changes to "Username is already taken."   
+	Input Email  Email_A  
+	Input Password  Password
+	Click "Continue" to submit the registration form 
+	Verify An error alert appears at the top of the form, showing a red error icon (!) and the text: "2 error2 prohibited this user from being saved: Email has already been taken, Username has already been taken"
+
+
+TS-3-006_Empty First Name Field
+	Navigate To SignUp Page  SignUpUrl
+	Input First name  Empty  
+	Input Last name  LastName  
+	Input Username  UserName_B  
+	Input Email  Email_B  
+	Input Password  Password
+	Click "Continue" to submit the registration form  
+	Verify Submission is blocked and user is kept on First name field   
+	Verify Inline validation message appears: "This field is required." 
+
+TS-3-007_First Name Too Long
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  Invalid_LongFirstName
+	Verify Inline validation error message appears instantly: "First name is too long (maximum is 127 characters)."
+	Input Last name  LastName  
+	Input Username  UserName_B  
+	Input Email  Email_B 
+	Input Password  Password
+    Click "Continue" to submit the registration form 
+	Verify Submission is blocked and user is kept on First name field  
+	Verify Inline validation error message "First name is too long (maximum is 127 characters)." still visible
+
+TS-3-008_Empty Last Name Field
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  Empty  
+    Input Username  UserName_B  
+    Input Email  Email_B  
+    Input Password  Password
+    Click "Continue" to submit the registration form   
+    Verify Submission is blocked and user is kept on Last name field  
+    Verify Inline validation message appears: "This field is required."
+
+TS-3-009_Last Name Too Long
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName
+    Input Last name  Invalid_LongLastName
+    Verify Inline validation error message appears instantly: "Last name is too long (maximum is 127 characters)."
+    Input Username  UserName_B  
+    Input Email  Email_B 
+    Input Password  Password
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked and user is kept on Last name field  
+    Verify Inline validation error message "Last name is too long (maximum is 127 characters)." still visible
+
+TS-3-010_Empty Username Field
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  Empty  
+    Input Email  Email_B  
+    Input Password  Password
+    Click "Continue" to submit the registration form   
+    Verify Submission is blocked and user is kept on Username field  
+    Verify Inline validation message appears: "Please create a username with only alphanumeric characters."
+
+TS-3-011_Username Too Short
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  Invalid_ShortUserName
+    Verify Inline validation error message appears instantly: "Username is too short (minimum is 2 characters)."
+    Input Email  Email_B  
+    Input Password  Password
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked and user is kept on Username field  
+    Verify Inline validation error message "Username is too short (minimum is 2 characters)." still visible
+
+TS-3-012_Username Too Long
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  Invalid_LongUserName
+    Verify Inline validation error message appears instantly: "Username is too long (maximum is 255 characters)."
+    Input Email  Email_B  
+    Input Password  Password
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked and user is kept on Username field  
+    Verify Inline validation error message "Username is too long (maximum is 255 characters)." still visible
+
+TS-3-013_Username Invalid Characters
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  Invalid_UserName
+    Verify Inline validation error message appears instantly: "Please create a username with only alphanumeric characters."
+    Input Email  Email_B  
+    Input Password  Password
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked and user is kept on Username field  
+    Verify Inline validation error message "Please create a username with only alphanumeric characters." still visible
+
+TS-3-014_Empty Email Field
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_B  
+    Input Email  Empty  
+    Input Password  Password
+    Click "Continue" to submit the registration form   
+    Verify Submission is blocked and user is kept on Email field  
+    Verify Inline validation message appears: "Please provide a valid email address."
+
+TS-3-015_Invalid Email Format
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_B  
+    Input Email  Invalid_Email
+    Input Password  Password
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked and user is kept on Email field  
+    Verify Inline validation error message appears: "Please provide a valid email address."
+
+TS-3-016_Email Without Top-Level Domain
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_B  
+    Input Email  Invalid_noTLDEmail
+    Verify Warning message appears below email field: "Email address without top-level domain. Make sure that you have entered the correct email address."
+    Input Password  Password
+    Click "Continue" to submit the registration form 
+    Verify Page title in the browser tab is "Help us keep GitLab secure · GitLab"
+	Verify Heading on the page is "Help us keep GitLab secure" and a message: "You are signed in as UserName. For added security, you'll need to verify your identity in a few quick steps." is displayed
+
+TS-3-017_Empty Password Field
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_C  
+    Input Email  Email_B  
+    Input Password  Empty
+    Click "Continue" to submit the registration form   
+    Verify Submission is blocked and user is kept on Password field  
+    Verify Password requirements checklist appears with all items marked red (✗):
+        - "Must be between 8-128 characters"
+        - "Cannot use common phrases (e.g. "password")"
+        - "Cannot include your name, username, or email"
+
+TS-3-018_Password Too Short
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_C  
+    Input Email  Email_B  
+    Input Password  Invalid_PasswordShort
+    Verify the Password requirements checklist updates with live validation as the user types:
+        - "Must be between 8-128 characters" (neutral - not yet validated)
+        - "Cannot use common phrases (e.g. "password")" (✓ green - passed)
+        - "Cannot include your name, username, or email" (✓ green - passed)
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked  
+    Verify "Must be between 8-128 characters" turns red (✗) indicating length requirement not met
+
+TS-3-019_Password Too Long
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_C  
+    Input Email  Email_B  
+    Input Password  Invalid_PasswordLong
+    Verify the Password requirements checklist updates with live validation as the user types:
+        - "Must be between 8-128 characters" (neutral - not yet validated)
+        - "Cannot use common phrases (e.g. "password")" (✓ green - passed)
+        - "Cannot include your name, username, or email" (✓ green - passed)
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked  
+    Verify "Must be between 8-128 characters" turns red (✗) indicating length requirement not met (too long)
+
+TS-3-020_Password Too Common
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_C  
+    Input Email  Email_B  
+    Input Password  Invalid_PasswordCommon
+    Verify the Password requirements checklist updates with live validation as the user types:
+        - "Must be between 8-128 characters" (✓ green - passed)
+        - "Cannot use common phrases (e.g. "password")" (neutral - not yet validated)
+        - "Cannot include your name, username, or email" (✓ green - passed)
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked  
+    Verify "Cannot use common phrases (e.g. "password")" turns red (✗) indicating common password detected
+
+TS-3-021_Password Contains Username
+    Navigate To SignUp Page  SignUpUrl
+    Input First name  FirstName  
+    Input Last name  LastName  
+    Input Username  UserName_C  
+    Input Email  Email_B  
+    Input Password  Invalid_PasswordWithUsername_C
+    Verify the Password requirements checklist updates with live validation as the user types:
+        - "Must be between 8-128 characters" (✓ green - passed)
+        - "Cannot use common phrases (e.g. "password")" (✓ green - passed)
+        - "Cannot include your name, username, or email" (neutral - not yet validated)
+    Click "Continue" to submit the registration form 
+    Verify Submission is blocked  
+    Verify "Cannot include your name, username, or email" turns red (✗) indicating password contains user info

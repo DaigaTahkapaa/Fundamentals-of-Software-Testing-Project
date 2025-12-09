@@ -1,0 +1,436 @@
+### **Project functionality Testsuite (TS-4)**
+
+*** Settings ***
+
+Documentation	Testing the Project CRUD (Create, Read, Update, Delete) functionality. 
+				Covers creating blank projects and projects from templates, viewing project details, updating project settings, and deleting projects (including restore and permanent deletion from Inactive tab). 
+				Note on test approach: Some actions (e.g., rename, delete) are available via quick actions on the project card (Actions menu with ellipsis button), but these tests navigate through opening the project and accessing Settings from the left sidebar.
+				Scope Limitations:
+				- Import project and CI/CD for external repository options are excluded
+				- Template selection: Only "Sample GitLab Project" template is tested from the built-in templates
+				- Deployment Target: Only "No deployment planned" is tested
+				- Visibility Level: Only "Private" is tested
+				- Project Configuration: "Initialize repository with a README" is checked (default), SAST and Secret Detection excluded
+				- Experimental settings (SHA-256): Excluded
+				- Project archiving: Excluded
+
+Pre Condition	Internet connection is active
+				User has a valid registered account
+				Browser is open in incognito/private mode 
+				Navigate to https://gitlab.com/users/sign_in
+				Successfully sign in with valid credentials
+				Confirm user is on GitLab Home page (page title: "Home · GitLab")
+
+Post Condition	Delete any test projects created during testing
+				Ensure user is logged out
+				Close incognito browser window
+
+Tags	        Project, CRUD, TS-4-Project
+
+*** Variables ***
+
+LoginUrl = https://gitlab.com/users/sign_in
+UserName = [REDACTED_UserName]
+Password = [REDACTED_Password]
+FirstName = Daiga
+LastName = Tähkäpää
+NewProjectUrl = https://gitlab.com/projects/new
+BlankProjectUrl = https://gitlab.com/projects/new#blank_project
+TemplateProjectUrl = https://gitlab.com/projects/new#create_from_template
+Namespace = [REDACTED_Namespace]
+ProjectName_NewBlank = TestNewBlankProject
+ProjectName_Template = TestTemplateProject
+TemplateName = Sample GitLab Project
+ProjectName_Updated = RenamedProject
+ProjectName_SpecialChars = Test@Project#123!
+ProjectName_InvalidStart = @InvalidProject
+ProjectName_TooLong = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ProjectName_PathMax = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA  # 255 characters
+ProjectName_DeletionPathIncorrect = NoneExistantProject
+ProjectName_Great = My Great Project
+ProjectSlug_Great = my-great-project
+ProjectSlug_EndsWithGit = myproject.git
+ProjectSlug_EndsWithAtom = myproject.atom
+ProjectSlug_StartsWithDash = -myproject
+DeploymentTarget = No deployment planned
+VisibilityLevel = Private
+InitializeWithReadme = true
+Empty = 
+
+*** Test Cases ***
+
+# Positive Tests (Create)
+
+TS-4-001_Create blank project with valid data
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Create a project" (or "New project" button if projects exist)
+    Verify New Project page loads (page title: "New Project · GitLab")
+    Click "Create blank project" option
+    Input Project name  ProjectName_NewBlank
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Select Deployment target  DeploymentTarget
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify User is redirected to the new project page (page title: "FirstName LastName / ProjectName_NewBlank · GitLab")
+    Verify Alert notification appears: "Project 'ProjectName_NewBlank' was successfully created." (blue info alert with dismiss button)
+
+TS-4-002_Create project from template
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Create a project" (or "New project" button if projects exist)
+    Verify New Project page loads (page title: "New Project · GitLab")
+    Click "Create from template" option
+    Select built-in template  TemplateName
+    Click "Use template" button
+    Input Project name  ProjectName_Template
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Verify Visibility level is set to  VisibilityLevel
+    Click "Create project" button
+    Verify User is redirected to the new project page (page title: "FirstName LastName / ProjectName_Template · GitLab")
+    Verify Alert notification appears: "Import in progress" with message "This project is being imported. Do not make any changes to the project until the import is complete."
+    Verify Import status message displays: "Import in progress" with spinner and "Please wait while we import the repository for you. Refresh at will."
+    Wait for import to complete (page will update automatically)
+    Verify Alert notification appears: "Project 'ProjectName_Template' was successfully created." (blue info alert with dismiss button)
+
+# Positive Tests (Read)
+
+TS-4-003_Verify project appears in project list
+    Prerequisite: TS-4-001 must be completed (ProjectName_NewBlank exists)
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Verify ProjectName_NewBlank appears in the list of projects
+    Verify Project shows correct visibility icon (Private)
+
+TS-4-004_View project details
+    Prerequisite: TS-4-001 must be completed (ProjectName_NewBlank exists)
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Verify Personal tab displays projects in the namespace  Namespace
+    Click on ProjectName_NewBlank in the project list
+    Verify Main content area displays project header with project name, visibility badge (lock icon for Private), notification settings, Star button, Fork button, and More actions menu
+    Verify File browser section displays branch selector (showing "main" branch), breadcrumb navigation, "Add to tree" button, "Find file" button, "Code" dropdown, and More actions menu
+    Verify File tree table displays columns: Name, Last commit, and Last update
+    Verify Left sidebar displays project info section with statistics (Commits, Branches, Tags, Storage), quick action links (README, Add LICENSE, Add CHANGELOG, etc.), and creation date
+    
+
+# Positive Tests (Update)
+
+TS-4-005_Rename project
+    Prerequisite: TS-4-001 must be completed (ProjectName_NewBlank exists)
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Click on ProjectName_NewBlank in the project list
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Locate "Project name" field in "Naming, description, topics" section
+    Clear the current name and input  ProjectName_Updated
+    Click "Save changes" button
+    Verify Alert notification appears: "Project 'ProjectName_Updated' was successfully updated." (blue info alert)
+    Verify Project name in left sidebar header is now displayed as  ProjectName_Updated
+
+# Positive Tests (Delete)
+
+TS-4-006_Delete project (soft delete)
+    Prerequisite: A test project exists (use ProjectName_Template from TS-4-002)
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Click on ProjectName_Template in the project list
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Scroll to "Advanced" section and expand it
+    Scroll to "Delete project" section
+    Click "Delete" button
+    Verify Delete modal appears with title "Are you absolutely sure?" and warning message about project deletion
+    Verify Modal displays project statistics (issues, merge requests, forks, stars)
+    Verify Modal displays message: "This project can be restored until [date]. Learn more."
+    Verify Input field prompts: "Enter the following to confirm: Namespace/ProjectSlug"
+    Type the full project path (Namespace/ProjectSlug) in the confirmation field
+    Verify "Yes, delete project" button becomes enabled
+    Click "Yes, delete project" button
+    Verify Warning alert appears: "This project is pending deletion, and will be deleted on [date]. Repository and other project resources are read-only." (yellow warning alert)
+    Verify Project name in left sidebar changes to show deletion status: "ProjectName_Template-deletion_scheduled-[ID]"
+    Verify "Pending deletion" badge appears next to project name
+    Verify User remains on project page (not redirected away)
+    Verify Project no longer appears in "Personal" tab
+    Verify Project appears in "Inactive" tab with Restore and "Delete immediately" buttons
+
+TS-4-007_Permanently delete project (permanent delete)
+    Prerequisite: A project has been marked for deletion (soft deleted) (use ProjectName_Template from TS-4-006); this test consumes the soft-deleted project, so rerun TS-4-006 before TS-4-008 if you plan to restore
+    Click "Projects" in the left sidebar
+    Click "Inactive" tab
+    Click on ProjectName_Template in the project list (project with "-deletion_scheduled" suffix)
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Scroll to "Advanced" section and expand it
+    Scroll to "Delete project" section
+    Click "Delete immediately" button
+    Verify Delete modal appears with title "Are you absolutely sure?" and red danger alert
+    Verify Modal displays project statistics (issues, merge requests, forks, stars)
+    Verify Modal displays message: "This project is NOT a fork. This process deletes the project repository and all related resources."
+    Verify Input field prompts: "Enter the following to confirm: Namespace/ProjectSlug-deletion_scheduled-[ID]"
+    Type the full project path with deletion suffix in the confirmation field
+    Verify "Yes, delete project" button becomes enabled
+    Click "Yes, delete project" button
+    Verify Toast notification appears (bottom-left): "Project '[ProjectName]' is being deleted."
+    Verify User is redirected to Projects page
+    Verify Project no longer appears in Personal tab
+    Verify Project no longer appears in Inactive tab
+
+# Positive Tests (Restore)
+
+TS-4-008_Restore deleted project from Inactive tab
+    Prerequisite: TS-4-002 must be completed, run TS-4-006 again (create TestTemplateProject and soft delete it)
+    Click "Projects" in the left sidebar
+    Click "Inactive" tab
+    Click on ProjectName_Template in the project list (project with "-deletion_scheduled" suffix)
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Scroll to "Advanced" section and expand it
+    Scroll to "Restore project" section
+    Click "Restore" button
+    Verify Blue info alert appears with message: "Project 'FirstName LastName / ProjectName_Template' has been successfully restored."
+    Click the Tanuki (Japanese raccoon dog) icon in the upper left corner to go to the Homepage
+    Verify User is on "Home · GitLab"
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Verify ProjectName_Template now appears in active projects list (with no "-deletion_scheduled" suffix)
+
+# Negative Tests (Create)
+
+TS-4-009_Create project with empty name
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Verify New Project page loads with empty Project name field
+    Leave Project name field empty
+    Click "Create project" button
+	Verify project creation is blocked and user is put on the "Project name" field
+    Verify Validation callout appears near Project name field: "Please fill out this field"
+
+TS-4-010_Create project without selecting namespace
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_NewBlank
+    Leave namespace dropdown unselected (in default "Pick a group or namespace" state)
+    Click "Create project" button
+	Verify project creation is blocked and user is put on the "Project URL" field
+    Verify Error message appears: "Pick a group or namespace where you want to create this project."
+
+TS-4-011_Create project with duplicate name
+    Prerequisite: TS-4-001 and TS-4-008 must be completed
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_Updated
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears at top of page with title "The form contains the following errors:"
+    Verify Alert contains bulleted error list including:
+        - "Project namespace name has already been taken"
+        - "Name has already been taken"
+        - "Path has already been taken"
+
+TS-4-012_Create project with special characters in name
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_SpecialChars
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug sanitizes special characters (replaces with dashes or removes them)
+    Select Deployment target  DeploymentTarget
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Observe live validation under Project name field shows red error: "Project name can contain only lowercase or uppercase letters, digits, emoji, spaces, dots, underscores, dashes, or pluses."
+    Click "Create project" button
+    Verify Red danger alert appears at top of page with title "The form contains the following error:"
+    Verify Alert contains bulleted error list including:
+        - "Name can contain only letters, digits, emoji, '_', '.', '+', dashes, or spaces. It must start with a letter, digit, emoji, or '_'."
+
+TS-4-013_Create project with name exceeding maximum length
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_TooLong
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears at top of page with title "The form contains the following errors:"
+    Verify Alert contains bulleted error list including:
+        - "Project namespace name is too long (maximum is 255 characters)"
+        - "Project namespace path is too long (maximum is 255 characters)"
+        - "Project namespace path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+        - "Name is too long (maximum is 255 characters)"
+        - "Path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+        - "Path is too long (maximum is 255 characters)"
+        - "Path is too long (maximum is 255 characters)"      
+
+TS-4-014_Create project with 255-character name (path too long)
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_PathMax
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears at top of page with title "The form contains the following error:"
+    Verify Alert contains bulleted error list including:
+        - "Path is too long (maximum is 255 characters)"
+
+TS-4-015_Create project with name starting with invalid character
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_InvalidStart
+    Verify inline validation under Project name shows red error: "Project name must start with a letter, digit, emoji, or underscore."
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug sanitizes special characters (replaces with dashes or removes them)
+    Select Deployment target  DeploymentTarget
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears at top of page with title "The form contains the following errors:"
+        Verify Alert contains bulleted error list including:
+        - "Name can contain only letters, digits, emoji, '_', '.', '+', dashes, or spaces. It must start with a letter, digit, emoji, or '_'."
+
+TS-4-016_Create project with slug ending in .git
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectSlug_EndsWithGit
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears with bulleted errors:
+        - "Project namespace path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+        - "Path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+
+TS-4-017_Create project with slug ending in .atom
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectSlug_EndsWithAtom
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears with bulleted errors:
+        - "Project namespace path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+        - "Path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+
+TS-4-018_Create project with slug starting with dash
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_NewBlank
+    Select namespace from "Pick a group or namespace" dropdown  Namespace
+    Verify Project slug is auto-generated from project name
+    Manually edit Project slug to  ProjectSlug_StartsWithDash
+    Verify Visibility level is set to  VisibilityLevel
+    Verify "Initialize repository with a README" is checked by default  InitializeWithReadme
+    Click "Create project" button
+    Verify Red danger alert appears with bulleted errors:
+        - "Project namespace path can only include non-accented letters, digits, '_', '-' and '.'. It must not start with '-', '_', or '.', nor end with '-', '_', '.', '.git', or '.atom'."
+        - "Project namespace path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+        - "Path can contain only letters, digits, '_', '-' and '.'. Cannot start with '-', end in '.git' or end in '.atom'"
+        - "Path can only include non-accented letters, digits, '_', '-' and '.'. It must not start with '-', '_', or '.', nor end with '-', '_', '.', '.git', or '.atom'."      
+
+# Negative Tests (Update)
+
+TS-4-019_Rename project to empty name
+    Prerequisite: TS-4-001 and TS-4-008 must be completed
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Click on ProjectName_Updated in the project list
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Locate "Project name" field in "Naming, description, topics" section
+    Clear the project name field (leave empty)
+    Click "Save changes" button
+    Verify Red danger alert appears with message: "Project namespace name can't be blank, Name can't be blank, and Name can contain only letters, digits, emoji, '_', '.', '+', dashes, or spaces. It must start with a letter, digit, emoji, or '_'."
+
+TS-4-020_Rename project to duplicate name
+    Prerequisite: Two projects exist in the same namespace (e.g., ProjectName_Updated from TS-4-005 and re-create ProjectName_Template by running TS-4-002 again)
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Click on ProjectName_Template in the project list
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Locate "Project name" field in "Naming, description, topics" section
+    Clear the current name and input  ProjectName_Updated
+    Click "Save changes" button
+    Verify Red danger alert appears with message: "Project namespace name has already been taken and Name has already been taken"
+
+# Negative Tests (Delete)
+
+TS-4-021_Verify delete confirmation requires exact project name
+    Prerequisite: TS-4-008 must be completed
+    Click "Projects" in the left sidebar
+    Verify Projects page loads (page title: "Projects · GitLab")
+    Click "Personal" tab
+    Click on ProjectName_Template in the project list
+    Click "Settings" in the left sidebar
+    Click "General" settings
+    Scroll to "Advanced" section and expand it
+    Scroll to "Delete project" section
+    Click "Delete" button
+    In confirmation dialog, type incorrect project name  ProjectName_DeletionPathIncorrect
+    Verify "Yes, delete project" button remains disabled
+    Type correct project name  ProjectName_Template
+    Verify "Yes, delete project" button becomes enabled
+
+# UI / Functional Tests
+
+TS-4-022_Verify New Project page options
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Verify New Project page loads (page title: "New Project · GitLab")
+    Verify Four options are displayed:
+        - "Create blank project"
+        - "Create from template"
+        - "Import project"
+        - "Run CI/CD for external repository"
+    Verify Each option has an icon and description
+
+TS-4-023_Verify project slug auto-generation from name
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project name  ProjectName_Great
+    Verify Project slug field auto-populates with  ProjectSlug_Great (lowercase, spaces replaced with dashes)
+
+TS-4-024_Verify project name auto-generation from slug
+    Click "Projects" in the left sidebar
+    Click "Create a project" (or "New project" button if projects exist)
+    Click "Create blank project" option
+    Input Project slug  ProjectSlug_Great
+    Verify Project name field auto-populates with  ProjectName_Great
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,163 @@
+### **Login functionality Testsuite (TS-2)**
+
+*** Settings ***
+
+Documentation	Testing the login functionality. Covers login scenarios with valid and invalid credentials. Covers sign-in scenarios with valid and invalid data. Third-party authentication options (e.g., Google, GitHub) are excluded from this test scope.	
+
+Pre Condition	Internet connection is active
+				Browser is open in incognito/private mode 
+				Navigate to https://gitlab.com/users/sign_in
+				Confirm that the page title in the browser tab is "Sign in · GitLab"
+				Ensure user is logged out (no active session)
+				User has a valid registered account		
+Post Condition	Ensure user is logged out
+				Close incognito browser window
+
+Tags	Login, TS-2-Login
+
+*** Variables ***
+
+LoginUrl = https://gitlab.com/users/sign_in
+UserName = [REDACTED_Username]
+Email = [REDACTED_Email]
+Password = [REDACTED_Password]
+Invalid_Username = NonExistentUser123
+Invalid_Email = NonExistentUser123@NonExistentDomain.invalid
+Invalid_Password = 1nvalidPa$$word
+Password_WrongCase = [REDACTED_Password_WrongCase]
+UserName_WithSpaces = [REDACTED_UserName_WithSpaces]
+UserName_UpperCase = [REDACTED_UserName_UpperCase]
+Empty = 
+
+*** Test Cases ***
+
+# Positive Tests
+
+TS-2-001_Login with valid username and password
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName
+    Input Password  Password
+    Click "Sign in" to submit the login form
+    Verify Successful login - user is redirected to GitLab Home page, page title in the browser tab is "Home · GitLab"
+    Click avatar icon in the upper right corner of the page
+    Verify User is logged in as @UserName
+
+TS-2-002_Login with email instead of username
+    Navigate To Login Page  LoginUrl
+    Input Username  Email
+    Input Password  Password
+    Click "Sign in" to submit the login form
+    Verify Successful login - user is redirected to GitLab Home page, page title in the browser tab is "Home · GitLab"
+    Click avatar icon in the upper right corner of the page
+    Verify User is logged in as @UserName
+
+TS-2-003_Login with "Remember me" checked
+    NOTE: This test requires non-incognito browser mode to verify session persistence
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName
+    Input Password  Password
+    Check "Remember me" checkbox
+    Click "Sign in" to submit the login form
+    Verify Successful login - user is redirected to GitLab Home page, page title in the browser tab is "Home · GitLab"
+    Close browser and reopen (non-incognito)
+    Navigate To Login Page  LoginUrl
+    Verify User is still logged in (session persisted)
+
+# Negative Tests
+
+TS-2-004_Empty username field
+    Navigate To Login Page  LoginUrl
+    Input Username  Empty
+    Input Password  Password
+    Click "Sign in" to submit the login form
+    Verify Submission is blocked and user is kept on Username field
+    Verify Inline validation message appears: "Username or primary email is required."
+
+TS-2-005_Empty password field
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName
+    Input Password  Empty
+    Click "Sign in" to submit the login form
+    Verify Submission is blocked and user is kept on Password field
+    Verify Inline validation message appears: "Password is required."
+
+TS-2-006_Both fields empty
+    Navigate To Login Page  LoginUrl
+    Input Username  Empty
+    Input Password  Empty
+    Click "Sign in" to submit the login form
+    Verify Submission is blocked and user is kept on Username field
+    Verify Inline validation message appears: "Username or primary email is required."
+    Verify Inline validation message appears: "Password is required."
+
+TS-2-007_Invalid username with valid password
+    Navigate To Login Page  LoginUrl
+    Input Username  Invalid_Username
+    Input Password  Password
+    Click "Sign in" to submit the login form
+    Verify Error alert appears at top of page: "Invalid login or password."
+
+TS-2-008_Valid username with invalid password
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName
+    Input Password  Invalid_Password
+    Click "Sign in" to submit the login form
+    Verify Error alert appears at top of page: "Invalid login or password."
+
+TS-2-009_Invalid username and invalid password
+    Navigate To Login Page  LoginUrl
+    Input Username  Invalid_Username
+    Input Password  Invalid_Password
+    Click "Sign in" to submit the login form
+    Verify Error alert appears at top of page: "Invalid login or password."
+
+# Neutral / Functional UI Tests
+
+TS-2-010_Password field masks and unmasks input
+    Navigate To Login Page  LoginUrl
+    Input Password  Password
+    Verify Password field displays masked characters (•••) instead of plain text
+	Click The "Show password" (eye-icon) button
+	Verify The password becomes visible in plain text
+	Click The "Hide password" (eye-slash-icon) button
+	Verify The password is hidden by showing • characters instead of plain text
+
+TS-2-011_Forgot password link navigation
+    Navigate To Login Page  LoginUrl
+    Click "Forgot your password?" link
+    Verify Page navigates to password reset page: https://gitlab.com/users/password/new
+    Verify Page title in the browser tab is "GitLab"
+
+TS-2-012_Register link navigation
+    Navigate To Login Page  LoginUrl
+    Click "Register now" link
+    Verify Page navigates to registration page: https://gitlab.com/users/sign_up
+    Verify Page title in the browser tab is "Sign up · GitLab"
+
+# Edge Case Tests
+
+TS-2-013_Username with leading and trailing white spaces
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName_WithSpaces
+    Input Password  Password
+    Click "Sign in" to submit the login form
+    Verify Successful login - spaces are trimmed and user is authenticated, user is redirected to GitLab Home page, page title in the browser tab is "Home · GitLab"
+    Click avatar icon in the upper right corner of the page
+    Verify User is logged in as @UserName
+
+TS-2-014_Case sensitivity of password
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName
+    Input Password  Password_WrongCase
+    Click "Sign in" to submit the login form
+    Verify Error alert appears at top of page: "Invalid login or password."
+    
+
+TS-2-015_Case insensitivity of username
+    Navigate To Login Page  LoginUrl
+    Input Username  UserName_UpperCase
+    Input Password  Password
+    Click "Sign in" to submit the login form
+    Verify Successful login - username is case-insensitive, user is redirected to GitLab Home page, page title in the browser tab is "Home · GitLab"
+    Click avatar icon in the upper right corner of the page
+    Verify User is logged in as @UserName

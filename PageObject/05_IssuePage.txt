@@ -1,0 +1,430 @@
+### **Issue functionality Testsuite (TS-5)**
+
+*** Settings ***
+
+Documentation	Testing Issue CRUD (Create, Read, Update, Delete) within a seed project. Focuses on creating issues, viewing details, editing title/description, and deleting issues.
+				Scope limitations:
+					- Issue type only (Incidents and Tasks excluded)
+					- No board/epic/label automation
+					- No attachments
+					- Single private project seed used for all cases
+					- Tests navigate via project-level Issues page; dashboard/My Work global issue views excluded.
+
+Pre Condition	Internet connection is active
+				User has a valid registered account
+				Browser is open in incognito/private mode
+				Navigate to LoginUrl
+				Sign in with valid credentials
+
+Post Condition	Delete any issues created during testing; delete the seed project
+				Ensure user is logged out
+				Close incognito browser window
+
+Tags			Issue, CRUD, TS-5-Issue
+
+#******************* Common Variables ********************
+
+*** Variables ***
+
+# Login/session
+LoginUrl = https://gitlab.com/users/sign_in
+FirstName = Daiga
+LastName = Tähkäpää
+UserName = [REDACTED_UserName]
+Password = [REDACTED_Password]
+SeedProjectNamespace = [REDACTED_SeedProjectNamespace]
+SeedProjectName = TS5-Seed-Project
+SeedProjectSlug = ts5-seed-project
+SeedProjectUrl = https://gitlab.com/[REDACTED_SeedProjectNamespace]/ts5-seed-project
+NewIssueUrl = https://gitlab.com/[REDACTED_SeedProjectNamespace]/ts5-seed-project/-/issues/new
+IssueUrl = https://gitlab.com/[REDACTED_SeedProjectNamespace]/ts5-seed-project/-/issues
+IssueTitle_First = First test issue
+IssueTitle_Second = Second test issue
+IssueTitle_MaxLength = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+IssueTitle_TooLong = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+IssueDescription_First = Initial issue created for TS-5 CRUD validation
+IssueTitle_Updated = Updated test issue title
+IssueDescription_Updated = Updated description for TS-5 CRUD validation
+IssueTitle_Second = Second issue using updated title pattern
+WorkItemType = Issue
+Empty = 
+
+
+#******************** Test Cases *************************
+
+*** Test Case ***
+
+Seed project setup (one-time, unnumbered prerequisite)
+	Click "Projects" in the left sidebar
+	Verify Projects page loads (page title: "Projects · GitLab")
+	Click "Create a project" (or "New project" button if projects exist)
+	Verify New Project page loads (page title: "New Project · GitLab")
+	Click "Create blank project" option
+	Input Project name  SeedProjectName
+	Select namespace from "Pick a group or namespace" dropdown  SeedProjectNamespace
+	Verify Project slug is auto-generated to  SeedProjectSlug
+	Select Visibility level  Private
+	Verify "Initialize repository with a README" is checked by default  true
+	Click "Create project" button
+	Verify User is redirected to the new project page (page title: "SeedProjectNamespace / SeedProjectName · GitLab")
+	Verify Alert notification appears: "Project 'SeedProjectName' was successfully created." (blue info alert)
+	Proceed to issue tests below using the seed
+
+# Positive (Create)
+
+TS-5-001_Create issue with valid title and description
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_First
+	Input Issue description  IssueDescription_First
+	Click "Create issue" button
+	Verify Modal closes
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Verify "Open" tab is selected
+	Verify Issue with title IssueTitle_First appears in list 
+	Verify Issue reference shows: SeedProjectNamespace/SeedProjectName#[issue number] 
+	Verify Issue author displays as FirstName LastName
+	Verify Issue created timestamp shows "right now"
+
+TS-5-002_Create issue with title only (no description)
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_Second
+	Leave Description field empty
+	Click "Create issue" button
+	Verify Modal closes
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Verify "Open" tab is selected
+	Verify Issue with title IssueTitle_First appears in list 
+	Verify Issue reference shows: SeedProjectNamespace/SeedProjectName#[issue number] 
+	Verify Issue author displays as FirstName LastName
+	Verify Issue created timestamp shows "right now"
+
+TS-5-003_Create issue with very long title (255 characters)
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_MaxLength
+	Click "Create issue" button
+	Verify Modal closes
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Verify "Open" tab is selected
+	Verify Issue with title IssueTitle_First appears in list 
+	Verify Issue reference shows: SeedProjectNamespace/SeedProjectName#[issue number] 
+	Verify Issue author displays as FirstName LastName
+	Verify Issue created timestamp shows "right now"
+
+# Positive (Read)
+
+TS-5-004_View issue details after creation
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_First
+	Verify Issue detail page loads
+	Verify Issue title displays  IssueTitle_First
+	Verify Issue description displays  IssueDescription_First
+	Verify Issue status badge shows "Open"
+	Verify Issue metadata visible (created date, author)
+
+# Positive (Update)
+
+TS-5-005_Edit issue title via Edit button
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_First
+	Verify Issue detail page loads
+	Click "Edit" button
+	Verify Issue form becomes editable
+	Clear Issue title field
+	Input new Issue title  IssueTitle_Updated
+	Click "Save changes" button
+	Verify Issue title updates to  IssueTitle_Updated
+	Verify User remains on issue detail page
+
+TS-5-006_Edit issue description
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_Updated
+	Verify Issue detail page loads
+	Click "Edit" button
+	Verify Issue form becomes editable
+	Clear Issue description field
+	Input new Issue description  IssueDescription_Updated
+	Click "Save changes" button
+	Verify Issue description updates to  IssueDescription_Updated
+	Verify User remains on issue detail page
+
+# Positive (Delete)
+
+TS-5-007_Delete issue via Actions dropdown
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_Second
+	Verify Issue detail page loads
+	Click Actions dropdown (ellipsis icon)
+	Verify Dropdown menu appears
+	Click "Delete issue" option
+	Verify Delete confirmation modal appears (modal title: "Delete issue")
+	Verify Modal message: "Are you sure you want to delete the issue? This action cannot be reversed."
+	Click "Delete issue" button
+	Verify Delete confirmation modal closes
+	Verify Issue detail panel closes
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Verify Issue is deleted (issue no longer appears in Issues list)
+
+TS-5-008_Cancel issue deletion
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_MaxLength
+	Verify Issue detail page loads
+	Click Actions dropdown (ellipsis icon)
+	Verify Dropdown menu appears
+	Click "Delete issue" option
+	Verify Delete confirmation modal appears (modal title: "Delete issue")
+	Verify Modal message: "Are you sure you want to delete the issue? This action cannot be reversed."
+	Click "Delete issue" button
+	Click "Cancel" button
+	Verify Modal closes
+	Verify Issue is NOT deleted
+	Verify User remains on issue detail page	
+
+# Positive (Functional)
+
+TS-5-009_Close an open issue
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_MaxLength
+	Verify Issue detail page loads
+	Click Actions dropdown (ellipsis icon)
+	Verify Dropdown menu appears
+	Click "Close issue" option
+	Verify Issue status badge changes to "Closed"
+	Navigate to IssueUrl
+	Click "Closed" tab
+	Verify Closed issue with title IssueTitle_MaxLength appears in Closed tab
+
+TS-5-010_Reopen a closed issue
+Prerequisite: TS-5-009 must be completed (IssueTitle_MaxLength was successfully closed)
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "Closed" tab
+	Click on existing closed issue title from list  IssueTitle_MaxLength
+	Click Actions dropdown (ellipsis icon)
+	Verify Dropdown menu appears
+	Click "Reopen issue" option
+	Navigate to IssueUrl
+	Click "Open" tab
+	Verify issue with title IssueTitle_MaxLength appears on the list
+
+TS-5-011_Create second issue with previously updated title
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_Updated
+	Input Issue description  IssueDescription_Updated
+	Click "Create issue" button
+	Verify Modal closes
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Verify "Open" tab is selected
+	Verify Issue with title IssueTitle_Updated appears in list (GitLab allows duplicate titles)
+	Verify Both issues with same title visible in list	
+
+TS-5-012_Close modal with X button preserves draft (within same session)
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_New
+	Input Issue description  IssueDescription_New
+	Click "Close" button (X icon in modal header)
+	Verify Modal closes (no confirmation prompt)
+	Verify User returns to Issues list page
+	Click "New item" button again (while still on Issues list page)
+	Verify Modal reopens with previously entered data preserved
+	Verify Issue title field contains  IssueTitle_New
+	Verify Issue description field contains  IssueDescription_New
+
+TS-5-013_Cancel issue creation - Continue editing
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_New
+	Input Issue description  IssueDescription_New
+	Click "Cancel" button
+	Verify Confirmation modal appears: "Are you sure you want to cancel creating this issue?"
+	Verify "Continue editing" button is visible
+	Verify "Discard changes" button is visible
+	Click "Continue editing" button
+	Verify User returns to issue creation modal
+	Verify Previously entered data is preserved
+
+TS-5-014_Cancel issue creation - Discard changes
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_New
+	Input Issue description  IssueDescription_New
+	Click "Cancel" button
+	Verify Confirmation modal appears: "Are you sure you want to cancel creating this issue?"
+	Verify "Continue editing" button is visible
+	Verify "Discard changes" button is visible
+	Click "Discard changes" button
+	Verify Modal closes
+	Verify User returns to Issues list page
+	Click "New item" button again
+	Verify Modal opens with empty fields (draft discarded)
+
+
+# Negative (Create)
+
+TS-5-015_Create issue with empty title
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Leave Issue title field empty
+	Click "Create issue" button
+	Verify Validation error appears: "A title is required"
+	Verify "Create issue" button is disabled
+	Verify User remains on modal
+
+TS-5-016_Create issue with title exceeding 255 characters
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click "New item" button in upper right corner
+	Verify "New issue" modal appears (modal title: "New issue")
+	Select Type from Type dropdown  WorkItemType
+	Input Issue title  IssueTitle_TooLong
+	Click "Create issue" button
+	Verify Validation error appears: "1 character over limit."
+	Verify "Create issue" button is disabled
+	Verify User remains on modal
+
+# Negative (Update)
+
+TS-5-017_Update issue title to empty
+	Navigate to  SeedProjectUrl
+	Verify Project page loads (SeedProjectName visible in header)
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Breadcrumb shows: FirstName LastName / SeedProjectName / Issues
+	Click on existing issue title from list  IssueTitle_MaxLength
+	Verify Issue detail page loads
+	Click "Edit" button
+	Verify Issue form becomes editable
+	Clear Issue title field
+	Click "Save changes" button
+	Verify Error alert appears: "Title can't be blank"
+	Verify User remains on edit form
+
+
+# UI Validation
+
+TS-5-018_Verify sort dropdown options in Issues list
+	Navigate to  SeedProjectUrl
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Verify Sort dropdown displays default: "Created date"
+	Click Sort dropdown
+	Verify Sort options include: Created date, Updated date, Priority, etc.
+
+TS-5-019_Search for issue by title
+	Navigate to  SeedProjectUrl
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Click in "Search or filter results…" field
+	Input search term  IssueTitle_Updated
+	Press Enter twice (search requires double Enter)
+	Verify Issues list filters to show matching issues
+	Verify Issue with title containing search term appears in list
+
+TS-5-020_Verify "Open in full page" link in modal
+	Navigate to  SeedProjectUrl
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Click "New item" button
+	Verify "New issue" modal appears
+	Click "Open in full page" link (title="Open in full page")
+	Verify User is redirected to full issue creation page (NewIssueUrl)
+	Verify Full page issue form loads (not modal)
+
+TS-5-021_Verify issue metadata after creation
+	Navigate to  SeedProjectUrl
+	Click "Issues" in left sidebar
+	Verify Issues list page loads (page title: "Issues · SeedProjectName · GitLab")
+	Click on existing issue title from list  IssueTitle_Updated
+	Verify Issue detail page loads
+	Verify Issue status badge shows "Open"
+	Verify Work item type shows "Issue"
+	Verify Issue author displays as  FirstName LastName
+	Verify Issue creation timestamp visible (e.g., "1 minute ago")
+
