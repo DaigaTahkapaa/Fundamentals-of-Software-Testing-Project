@@ -1,6 +1,6 @@
 # Fundamentals of Software Testing - Assignment Project
 
-**Student:** Daiga Tähkäpää (2413152)  
+**Student:** Daiga Tähkäpää
 **Programme:** Degree Programme in Business Information Technology, Developing Digital Services  
 **Studies:** Online studies, Bachelor's Degree
 
